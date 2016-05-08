@@ -35,7 +35,7 @@ def decode_mail_header(value, default_charset='us-ascii'):
         return str_decode(str_encode(value, default_charset, 'replace'), default_charset)
     else:
         for index, (text, charset) in enumerate(headers):
-            logger.debug("Mail header no. {}: {} encoding {}".format(index, str_decode(text, charset or default_charset), charset))
+            logger.debug("Mail header no. {}: {} encoding {}".format(index, str_decode(text, charset or 'utf-8'), charset))
             try:
                 headers[index] = str_decode(text, charset or default_charset,
                                             'replace')
@@ -83,7 +83,7 @@ def decode_param(param):
 def parse_attachment(message_part):
     # Check again if this is a valid attachment
     content_disposition = message_part.get("Content-Disposition", None)
-    if content_disposition is not None:
+    if content_disposition is not None and not message_part.is_multipart():
         dispositions = content_disposition.strip().split(";")
 
         if dispositions[0].lower() in ["attachment", "inline"]:
@@ -143,8 +143,9 @@ def parse_email(raw_email):
         logger.debug("Multipart message. Will process parts.")
         for part in email_message.walk():
             content_type = part.get_content_type()
+            part_maintype = part.get_content_maintype()
             content_disposition = part.get('Content-Disposition', None)
-            if content_disposition:
+            if content_disposition or not part_maintype == "text":
                 content = part.get_payload(decode=True)
             else:
                 content = decode_content(part)
